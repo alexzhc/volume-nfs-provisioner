@@ -1,0 +1,215 @@
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: volume-nfs
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ${PV}
+  namespace: volume-nfs
+  labels:
+    volume.io/nfs: ${PV}
+  annotations:
+    original-target-ns: ${NS}
+    original-target-pvc: ${PVC} 
+spec:
+  serviceName: ${PV}
+  replicas: 1
+  selector:
+    matchLabels:
+      volume.io/nfs: ${PV}
+  template:
+    metadata:
+      labels:
+        volume.io/nfs: ${PV}
+      annotations:
+        original-target-ns: ${NS}
+        original-target-pvc: ${PVC} 
+    spec:
+      restartPolicy: Always
+      priorityClassName: system-node-critical
+      hostNetwork: true
+      hostPID: true
+      dnsPolicy: ClusterFirstWithHostNet
+      terminationGracePeriodSeconds: 0
+      containers:
+      - name: ${PV} 
+        image: dockerhub.azk8s.cn/library/busybox
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          privileged: true
+        resources:
+          limits:
+            cpu: '200m'
+            memory: '200Mi'              
+        ports:
+        - name: nfs
+          containerPort: 2049
+        - name: nfs-udp
+          containerPort: 2049
+          protocol: UDP
+        - name: nlockmgr
+          containerPort: 32803
+        - name: nlockmgr-udp
+          containerPort: 32803
+          protocol: UDP
+        - name: mountd
+          containerPort: 20048
+        - name: mountd-udp
+          containerPort: 20048
+          protocol: UDP
+        - name: rquotad
+          containerPort: 875
+        - name: rquotad-udp
+          containerPort: 875
+          protocol: UDP
+        - name: rpcbind
+          containerPort: 111
+        - name: rpcbind-udp
+          containerPort: 111
+          protocol: UDP
+        - name: statd
+          containerPort: 662
+        - name: statd-udp
+          containerPort: 662
+          protocol: UDP
+        env:
+        - name: POD_UID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.uid
+        - name: ORIG_TGT_NS
+          value: ${NS}
+        - name: ORIG_TGT_PVC
+          value: ${PVC}
+        # - name: EXPORT_IP
+        #   valueFrom:
+        #     fieldRef:
+        #       fieldPath: status.podIP
+        - name: EXPORT_IP
+          value: "0.0.0.0"
+        - name: BASENAME
+          value: ${PV}
+        - name: EXPORT_OPT
+          value: rw,sync,insecure,no_root_squash,no_subtree_check,crossmnt
+        command:
+        - /bin/sh
+        args:
+        - -axc
+        - |
+          # get device and dir
+          EXPORT_DIR="$( df -h | grep "/${BASENAME}$" | awk '{print $NF}' )"
+          EXPORT_DEV="$( df -h | grep "/${BASENAME}$" | awk '{print $1}' )"
+          if [ "${EXPORT_IP}" = "0.0.0.0" ]; then
+            EXPORT_MASK="0.0.0.0"
+          else 
+            EXPORT_MASK="$( ifconfig | awk "/${EXPORT_IP}/ {print \$4}" | sed 's/Mask://' )"
+          fi 
+
+          # set env file
+          printenv | grep -E EXPORT_\|POD_\|ORIG_ > ${EXPORT_DIR}.env
+
+          # start systemd to export
+          SERVICE="volume-nfs@${BASENAME}.service"
+          nsenter -t1 -m -- systemctl start "${SERVICE}"
+          
+          # check for success
+          let timer=0
+          until nsenter -t1 -m -- systemctl is-active "${SERVICE}"; do
+            sleep 1
+            let timer++
+            [ "${timer}" -ge 10 ] && exit 1
+          done 
+
+          # show logs
+          nsenter -t1 -m -- systemctl status "${SERVICE}"
+
+          # exit script 
+          _exit_script() {
+            nsenter -t1 -m -- systemctl stop --no-block "${SERVICE}"
+            exit
+          }
+
+          # main loop
+          trap _exit_script SIGTERM SIGINT SIGKILL
+          set +x
+          while :
+          do
+            sleep 1
+          done
+        readinessProbe:
+          tcpSocket:
+            port: 2049
+          periodSeconds: 1
+        volumeMounts:
+        - mountPath: /var/lib/volume/nfs
+          name: nfs
+          mountPropagation: Bidirectional
+        - mountPath: /var/lib/volume/nfs/${PV}
+          name: data
+      volumes:
+      - name: nfs
+        hostPath:
+            path: /var/lib/volume/nfs
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+      annotations:
+        original-target-ns: ${NS}
+        original-target-pvc: ${PVC} 
+    spec:
+      volumeMode: Filesystem
+      accessModes:
+      - ReadWriteMany
+      storageClassName: ${SC}
+      resources:
+        requests:
+          storage: ${SIZE}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${PV}
+  namespace: volume-nfs
+  labels:
+    volume.io/nfs: ${PV}
+  annotations:
+    original-target-ns: ${NS}
+    original-target-pvc: ${PVC}
+  selector:
+    volume.io/nfs: ${PV}
+spec:
+  type: ClusterIP
+  ports:
+  - name: nfs
+    port: 2049
+  - name: nfs-udp
+    port: 2049
+    protocol: UDP
+  - name: nlockmgr
+    port: 32803
+  - name: nlockmgr-udp
+    port: 32803
+    protocol: UDP
+  - name: mountd
+    port: 20048
+  - name: mountd-udp
+    port: 20048
+    protocol: UDP
+  - name: rquotad
+    port: 875
+  - name: rquotad-udp
+    port: 875
+    protocol: UDP
+  - name: rpcbind
+    port: 111
+  - name: rpcbind-udp
+    port: 111
+    protocol: UDP
+  - name: statd
+    port: 662
+  - name: statd-udp
+    port: 662
+    protocol: UDP
+
