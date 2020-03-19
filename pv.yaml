@@ -20,4 +20,4 @@ spec:
     - mountport=20048
   nfs:
     server: ${CLUSTER_IP}
-    path: /var/lib/volume/nfs/${PV}
+    path: /var/lib/volume/nfs/${DATA_PV}

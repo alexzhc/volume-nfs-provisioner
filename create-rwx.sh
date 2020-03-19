@@ -31,8 +31,10 @@ while [ -z "${CLUSTER_IP}" ] ; do
     [ "${SECONDS}" -ge 30 ] && echo 'Cannot get clusterip, failed to create pvc' && exit 1
 done 
 
-# create pv
-cat pv.yaml | envsubst '${PV} ${SIZE} ${NS} ${PVC} ${CLUSTER_IP}' | kubectl apply -f -
+# get data pv name
+DATA_PVC="data-${PV}-0"
+DATA_PVC_UID="$( kubectl get -n volume-nfs pvc "$DATA_PVC" -o jsonpath='{.metadata.uid}' )"
+DATA_PV="pvc-${DATA_PVC_UID}"
 
 # wait for service to be ready
 SECONDS=0
@@ -42,6 +44,10 @@ while [ -z "${ENDPOINTS}" ] ; do
     sleep 1
     [ "${SECONDS}" -ge 300 ] && echo 'Cannot get endpoints, please check volume-nfs pod' && exit 1
 done 
+
+
+# create pv
+cat pv.yaml | envsubst '${PV} ${DATA_PV} ${SIZE} ${NS} ${PVC} ${CLUSTER_IP}' | kubectl apply -f -
 
 echo "PVC ${PVC} is Ready!"
 

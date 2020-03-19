@@ -12,7 +12,7 @@ metadata:
     volume.io/nfs: ${PV}
   annotations:
     original-target-ns: ${NS}
-    original-target-pvc: ${PVC} 
+    original-target-pvc: ${PVC}
 spec:
   serviceName: ${PV}
   replicas: 1
@@ -25,7 +25,7 @@ spec:
         volume.io/nfs: ${PV}
       annotations:
         original-target-ns: ${NS}
-        original-target-pvc: ${PVC} 
+        original-target-pvc: ${PVC}
     spec:
       restartPolicy: Always
       priorityClassName: system-node-critical
@@ -89,8 +89,6 @@ spec:
         #       fieldPath: status.podIP
         - name: EXPORT_IP
           value: "0.0.0.0"
-        - name: BASENAME
-          value: ${PV}
         - name: EXPORT_OPT
           value: rw,sync,insecure,no_root_squash,no_subtree_check,crossmnt
         command:
@@ -98,9 +96,18 @@ spec:
         args:
         - -axc
         - |
-          # get device and dir
-          EXPORT_DIR="$( df -h | grep "/${BASENAME}$" | awk '{print $NF}' )"
-          EXPORT_DEV="$( df -h | grep "/${BASENAME}$" | awk '{print $1}' )"
+          # get data pv name
+          DATA_PV="pvc-${POD_UID}"
+
+          # get device
+          EXPORT_DEV="$( df | awk '/ \/data$/ {print $1}' )"
+
+          # get export dir
+          EXPORT_DIR="/var/lib/volume/nfs/${DATA_PV}"
+
+          # bind mount device to export dir
+          mount --bind /data "$EXPORT_DIR"
+
           if [ "${EXPORT_IP}" = "0.0.0.0" ]; then
             EXPORT_MASK="0.0.0.0"
           else 
@@ -108,10 +115,10 @@ spec:
           fi 
 
           # set env file
-          printenv | grep -E EXPORT_\|POD_\|ORIG_ > ${EXPORT_DIR}.env
+          printenv | grep -E EXPORT_\|ORIG_ > ${EXPORT_DIR}.env
 
           # start systemd to export
-          SERVICE="volume-nfs@${BASENAME}.service"
+          SERVICE="volume-nfs@${DATA_PV}.service"
           nsenter -t1 -m -- systemctl start "${SERVICE}"
           
           # check for success
@@ -146,7 +153,7 @@ spec:
         - mountPath: /var/lib/volume/nfs
           name: nfs
           mountPropagation: Bidirectional
-        - mountPath: /var/lib/volume/nfs/${PV}
+        - mountPath: /data
           name: data
       volumes:
       - name: nfs
@@ -177,9 +184,9 @@ metadata:
   annotations:
     original-target-ns: ${NS}
     original-target-pvc: ${PVC}
-  selector:
-    volume.io/nfs: ${PV}
 spec:
+  selector:
+      volume.io/nfs: ${PV}
   type: ClusterIP
   ports:
   - name: nfs
