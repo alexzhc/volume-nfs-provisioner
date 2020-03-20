@@ -1,14 +1,14 @@
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: ${PV}
+  name: ${nfs_pv}
 spec:
   storageClassName: ""
   claimRef:
-    namespace: ${NS}
-    name: ${PVC}
+    namespace: ${nfs_ns}
+    name: ${nfs_pvc}
   capacity:
-    storage: ${SIZE}
+    storage: ${size}
   volumeMode: Filesystem
   accessModes:
     - ReadWriteMany
@@ -17,7 +17,6 @@ spec:
     - nfsvers=4.2
     - proto=tcp
     - timeo=80
-    - mountport=20048
   nfs:
-    server: ${CLUSTER_IP}
-    path: /var/lib/volume/nfs/${DATA_PV}
+    server: ${cluster_ip}
+    path: /var/lib/volume/nfs/${data_pv}

@@ -1,26 +1,26 @@
 #!/bin/bash -x
-OPT="$1"
-BASENAME="$2"
-[ -z "${BASENAME}" ] && echo "Must provide a mountpoint basename" && exit 1
+opt="$1"
+basename="$2"
+[ -z "${basename}" ] && echo "Must provide a mountpoint basename" && exit 1
 
-case "$OPT" in 
+case "$opt" in 
     -r)
-        echo "This export is originally for target PVC \"${ORIG_TGT_PVC}\" in namespace \"${ORIG_TGT_NS}\""
+        echo "This export is originally for target PVC \"${nfs_pvc}\" in namespace \"${nfs_ns}\""
         # export
-        sed -i "/${BASENAME}/d" /etc/exports
-        echo "${EXPORT_DIR} ${EXPORT_IP}/${EXPORT_MASK}(${EXPORT_OPT})" >> /etc/exports    
+        sed -i "/${basename}/d" /etc/exports
+        echo "${export_dir} ${export_ip}/${export_mask}(${export_opt})" >> /etc/exports    
         exportfs -vr
-        showmount -e "${EXPORT_IP}" | grep "${EXPORT_DIR}" || exit 1
+        showmount -e "${export_ip}" | grep "${export_dir}" || exit 1
         ;;
     -u)
         # unexport
-        sed -i "/${BASENAME}/d" /etc/exports
+        sed -i "/${basename}/d" /etc/exports
         exportfs -vrf
         # make sure unmount
         SECONDS=0
-        while [ "${SECONDS}" -lt 120 ] ; do 
-            findmnt "${EXPORT_DEV}" || break
-            umount -vAf "${EXPORT_DEV}" && break
+        while [ "$SECONDS" -lt 120 ] ; do 
+            findmnt "${data_dev}" || break
+            umount -vAf "${data_dev}" && break
         done
         ;;
     *)

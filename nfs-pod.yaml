@@ -6,26 +6,26 @@ metadata:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: ${PV}
+  name: ${nfs_pv}
   namespace: volume-nfs
   labels:
-    volume.io/nfs: ${PV}
+    volume.io/nfs: ${nfs_pv}
   annotations:
-    original-target-ns: ${NS}
-    original-target-pvc: ${PVC}
+    original-target-ns: ${nfs_ns}
+    original-target-pvc: ${nfs_pvc}
 spec:
-  serviceName: ${PV}
+  serviceName: ${nfs_pv}
   replicas: 1
   selector:
     matchLabels:
-      volume.io/nfs: ${PV}
+      volume.io/nfs: ${nfs_pv}
   template:
     metadata:
       labels:
-        volume.io/nfs: ${PV}
+        volume.io/nfs: ${nfs_pv}
       annotations:
-        original-target-ns: ${NS}
-        original-target-pvc: ${PVC}
+        original-target-ns: ${nfs_ns}
+        original-target-pvc: ${nfs_pvc}
     spec:
       restartPolicy: Always
       priorityClassName: system-node-critical
@@ -34,107 +34,70 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       terminationGracePeriodSeconds: 0
       containers:
-      - name: ${PV} 
-        image: dockerhub.azk8s.cn/library/busybox
+      - name: export
+        image: busybox
         imagePullPolicy: IfNotPresent
         securityContext:
           privileged: true
         resources:
           limits:
             cpu: '200m'
-            memory: '200Mi'              
-        ports:
-        - name: nfs
-          containerPort: 2049
-        - name: nfs-udp
-          containerPort: 2049
-          protocol: UDP
-        - name: nlockmgr
-          containerPort: 32803
-        - name: nlockmgr-udp
-          containerPort: 32803
-          protocol: UDP
-        - name: mountd
-          containerPort: 20048
-        - name: mountd-udp
-          containerPort: 20048
-          protocol: UDP
-        - name: rquotad
-          containerPort: 875
-        - name: rquotad-udp
-          containerPort: 875
-          protocol: UDP
-        - name: rpcbind
-          containerPort: 111
-        - name: rpcbind-udp
-          containerPort: 111
-          protocol: UDP
-        - name: statd
-          containerPort: 662
-        - name: statd-udp
-          containerPort: 662
-          protocol: UDP
+            memory: '200Mi'
         env:
-        - name: POD_UID
+        - name: pod_uid
           valueFrom:
             fieldRef:
               fieldPath: metadata.uid
-        - name: ORIG_TGT_NS
-          value: ${NS}
-        - name: ORIG_TGT_PVC
-          value: ${PVC}
-        # - name: EXPORT_IP
+        - name: nfs_ns
+          value: ${nfs_ns}
+        - name: nfs_pvc
+          value: ${nfs_pvc}
+        # - name: export_ip
         #   valueFrom:
         #     fieldRef:
         #       fieldPath: status.podIP
-        - name: EXPORT_IP
+        - name: export_ip
           value: "0.0.0.0"
-        - name: EXPORT_OPT
+        - name: export_opt
           value: rw,sync,insecure,no_root_squash,no_subtree_check,crossmnt
         command:
         - /bin/sh
         args:
         - -axc
         - |
-          # get data pv name
-          DATA_PV="pvc-${POD_UID}"
-
           # get device
-          EXPORT_DEV="$( df | awk '/ \/data$/ {print $1}' )"
+          data_dev="$( df | awk '/ \/data$/ {print $1}' )"
 
           # get export dir
-          EXPORT_DIR="/var/lib/volume/nfs/${DATA_PV}"
+          export_dir="/var/lib/volume/nfs/${nfs_pvc}"
 
-          # bind mount device to export dir
-          mount --bind /data "$EXPORT_DIR"
-
-          if [ "${EXPORT_IP}" = "0.0.0.0" ]; then
-            EXPORT_MASK="0.0.0.0"
+          if [ "${export_ip}" = "0.0.0.0" ]; then
+            export_mask="0.0.0.0"
           else 
-            EXPORT_MASK="$( ifconfig | awk "/${EXPORT_IP}/ {print \$4}" | sed 's/Mask://' )"
+            export_mask="$( ifconfig | awk "/${export_ip}/ {print \$4}" | sed 's/Mask://' )"
           fi 
 
           # set env file
-          printenv | grep -E EXPORT_\|ORIG_ > ${EXPORT_DIR}.env
+          printenv > ${export_dir}.env
 
           # start systemd to export
-          SERVICE="volume-nfs@${DATA_PV}.service"
-          nsenter -t1 -m -- systemctl start "${SERVICE}"
+          nfs_service="volume-nfs@${nfs_pvc}.service"
+          nsenter -t1 -m -- systemctl start "${nfs_service}"
           
           # check for success
           let timer=0
-          until nsenter -t1 -m -- systemctl is-active "${SERVICE}"; do
+          until nsenter -t1 -m -- systemctl is-active "${nfs_service}"; do
             sleep 1
             let timer++
             [ "${timer}" -ge 10 ] && exit 1
           done 
 
           # show logs
-          nsenter -t1 -m -- systemctl status "${SERVICE}"
+          nsenter -t1 -m -- systemctl status "$nfs_service"
 
           # exit script 
           _exit_script() {
-            nsenter -t1 -m -- systemctl stop --no-block "${SERVICE}"
+            nsenter -t1 -m -- systemctl stop --no-block "$nfs_service"
             exit
           }
 
@@ -153,8 +116,8 @@ spec:
         - mountPath: /var/lib/volume/nfs
           name: nfs
           mountPropagation: Bidirectional
-        - mountPath: /data
-          name: data
+        - name: data
+          mountPath: /var/lib/volume/nfs/${nfs_pvc}
       volumes:
       - name: nfs
         hostPath:
@@ -163,30 +126,30 @@ spec:
   - metadata:
       name: data
       annotations:
-        original-target-ns: ${NS}
-        original-target-pvc: ${PVC} 
+        original-target-ns: ${nfs_ns}
+        original-target-pvc: ${nfs_pvc} 
     spec:
       volumeMode: Filesystem
       accessModes:
       - ReadWriteMany
-      storageClassName: ${SC}
+      storageClassName: ${data_sc}
       resources:
         requests:
-          storage: ${SIZE}
+          storage: ${size}
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: ${PV}
+  name: ${nfs_pv}
   namespace: volume-nfs
   labels:
-    volume.io/nfs: ${PV}
+    volume.io/nfs: ${nfs_pv}
   annotations:
-    original-target-ns: ${NS}
-    original-target-pvc: ${PVC}
+    original-target-ns: ${nfs_ns}
+    original-target-pvc: ${nfs_pvc}
 spec:
   selector:
-      volume.io/nfs: ${PV}
+      volume.io/nfs: ${nfs_pv}
   type: ClusterIP
   ports:
   - name: nfs
