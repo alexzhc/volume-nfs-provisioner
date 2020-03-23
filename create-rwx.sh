@@ -14,19 +14,19 @@ kubectl get -n "$nfs_ns" pvc "$nfs_pvc" && echo "PVC $nfs_pvc under $nfs_ns exis
 ! kubectl get sc "$data_sc" && echo "SC $data_sc dose not exist." && exit 1
 
 # create nfs pvc
-cat nfs-pvc.yaml | envsubst '${nfs_pvc} ${size} ${nfs_ns}' | kubectl apply -f -
+envsubst < nfs-pvc.yaml | kubectl apply -f -
 nfs_pvc_uid="$( kubectl get -n "$nfs_ns" pvc "$nfs_pvc" -o jsonpath='{.metadata.uid}' )"
 nfs_pv="pvc-${nfs_pvc_uid}"
 
 # create data pvc
 data_pvc="data-${nfs_pvc_uid}"
-cat data-pvc.yaml | envsubst '${data_pvc} ${data_sc} ${size}' | kubectl apply -f -
+envsubst < data-pvc.yaml | kubectl apply -f -
 data_pvc_uid="$( kubectl get -n volume-nfs pvc "$data_pvc" -o jsonpath='{.metadata.uid}' )"
 data_pv="pvc-${data_pvc_uid}"
 
 # create nfs statefulset
 nfs_sts="$nfs_pv"
-cat nfs-sts.yaml | envsubst '${nfs_sts} ${data_pvc} ${data_pv} ${nfs_ns} ${nfs_pvc}' | kubectl apply -f -
+envsubst < nfs-sts.yaml | kubectl apply -f -
 
 # get service cluserip
 SECONDS=0
@@ -37,6 +37,9 @@ while [ -z "$cluster_ip" ] ; do
     [ "$SECONDS" -ge 30 ] && echo 'Cannot get cluster ip, failed to create nfs pvc' && exit 1
 done 
 
+# create pv
+envsubst < nfs-pv.yaml | kubectl apply -f -
+
 # wait for service endpoints to be ready
 SECONDS=0
 endpoints=
@@ -45,9 +48,6 @@ while [ -z "$endpoints" ] ; do
     sleep 1
     [ "$SECONDS" -ge 300 ] && echo 'Cannot get endpoints, please check volume-nfs pod' && exit 1
 done 
-
-# create pv
-cat nfs-pv.yaml | envsubst '${nfs_pv} ${size} ${nfs_ns} ${nfs_pvc} ${data_pv} ${cluster_ip}' | kubectl apply -f -
 
 echo "nfs_pvc ${nfs_pvc} is Ready!"
 

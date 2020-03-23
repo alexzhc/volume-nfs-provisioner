@@ -18,7 +18,7 @@ spec:
       restartPolicy: Always
       terminationGracePeriodSeconds: 0
       containers:
-      - image: dockerhub.azk8s.cn/library/nginx
+      - image: nginx
         imagePullPolicy: IfNotPresent
         name: nginx
         ports:

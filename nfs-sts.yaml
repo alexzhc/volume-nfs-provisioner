@@ -28,8 +28,8 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       terminationGracePeriodSeconds: 0
       containers:
-      - name: export
-        image: busybox
+      - name: exporter
+        image: alexzhc/nfs-exporter
         imagePullPolicy: IfNotPresent
         securityContext:
           privileged: true
@@ -58,61 +58,22 @@ spec:
         #   valueFrom:
         #     fieldRef:
         #       fieldPath: status.podIP
-        command:
-        - /bin/sh
-        args:
-        - -axc
-        - |
-          # get device
-          data_dev="$( df | grep "$export_dir" | awk '{print $1}' )"
-
-          if [ "${export_ip}" = "0.0.0.0" ]; then
-            export_mask="0.0.0.0"
-          else 
-            export_mask="$( ifconfig | awk "/${export_ip}/ {print \$4}" | sed 's/Mask://' )"
-          fi 
-
-          # set env file
-          printenv | grep -E nfs_\|data_\|export_\|pod_ > ${export_dir}.env
-
-          # start systemd to export
-          nfs_service="volume-nfs@${data_pv}.service"
-          nsenter -t1 -m -- systemctl start "${nfs_service}"
-          
-          # check for success
-          let timer=0
-          until nsenter -t1 -m -- systemctl is-active "${nfs_service}"; do
-            sleep 1
-            let timer++
-            [ "${timer}" -ge 10 ] && exit 1
-          done 
-
-          # show logs
-          nsenter -t1 -m -- systemctl status "$nfs_service"
-
-          # exit script 
-          _exit_script() {
-            nsenter -t1 -m -- systemctl stop --no-block "$nfs_service"
-            exit
-          }
-
-          # main loop
-          trap _exit_script SIGTERM SIGINT SIGKILL
-          set +x
-          while true
-          do
-            sleep 1
-          done
         readinessProbe:
           tcpSocket:
             port: 2049
           periodSeconds: 1
+        lifecycle:
+            preStop:
+              exec:
+                command: [ "prestop.sh" ]
         volumeMounts:
         - mountPath: /var/lib/volume/nfs
           name: nfs
           mountPropagation: Bidirectional
         - name: data
           mountPath: /var/lib/volume/nfs/${data_pv}
+        - name: systemd
+          mountPath: /etc/systemd/system
       volumes:
       - name: nfs
         hostPath:
@@ -120,6 +81,10 @@ spec:
       - name: data
         persistentVolumeClaim:
           claimName: ${data_pvc}
+      - name: systemd
+        hostPath:
+          path: /etc/systemd/system
+      
 ---
 apiVersion: v1
 kind: Service
