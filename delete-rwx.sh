@@ -1,25 +1,31 @@
 #!/bin/bash -ax
 
-PVC="$1"
-NS="${2:-default}"
+nfs_pvc="$1"
+nfs_ns="${2:-default}"
 
 # verify parameters 
-[ -z "$PVC" ] && echo "Must provide a PVC name." && exit 1
+[ -z "$nfs_pvc" ] && echo "Must provide a nfs_pvc name." && exit 1
 
-! kubectl get ns "$NS" && echo "Namespace $NS does not exist." && exit 1
-! kubectl get -n "$NS" pvc "$PVC" && echo "PVC $PVC under $NS does not exist." && exit 1
+! kubectl get ns "$nfs_ns" && echo "Namespace $nfs_ns does not exist." && exit 1
+! kubectl get -n "$nfs_ns" pvc "$nfs_pvc" && echo "nfs_pvc $nfs_pvc under $nfs_ns does not exist." && exit 1
 
 # get pv name
-PVC_UID="$( kubectl get -n "$NS" pvc "$PVC" -o jsonpath='{.metadata.uid}' )"
-PV="pvc-${PVC_UID}"
+nfs_pvc_uid="$( kubectl get -n "$nfs_ns" pvc "$nfs_pvc" -o jsonpath='{.metadata.uid}' )"
+nfs_pv="pvc-${nfs_pvc_uid}"
+nfs_sts="$nfs_pv"
+data_pvc="data-${nfs_pvc_uid}"
 
 # delete objects
-kubectl delete -n "$NS" pvc "$PVC"
+kubectl delete deploy nginx
 
-kubectl delete pv "$PV"
+sleep 5
 
-kubectl delete -n volume-nfs sts "$PV"
+kubectl delete -n "$nfs_ns" pvc "$nfs_pvc"
 
-kubectl delete -n volume-nfs svc "$PV"
+kubectl delete pv "$nfs_pv"
 
-kubectl delete -n volume-nfs pvc "data-${PV}-0"
+kubectl delete -n volume-nfs sts "$nfs_sts"
+
+kubectl delete -n volume-nfs svc "$nfs_sts"
+
+kubectl delete -n volume-nfs pvc "$data_pvc"

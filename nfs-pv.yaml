@@ -11,12 +11,12 @@ spec:
     storage: ${size}
   volumeMode: Filesystem
   accessModes:
-    - ReadWriteMany
+  - ReadWriteMany
   persistentVolumeReclaimPolicy: Delete
   mountOptions: 
-    - nfsvers=4.2
-    - proto=tcp
-    - timeo=80
+  - nfsvers=4.2
+  - proto=tcp
+  - timeo=80
   nfs:
     server: ${cluster_ip}
     path: /var/lib/volume/nfs/${data_pv}

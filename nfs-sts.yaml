@@ -6,29 +6,23 @@ metadata:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: ${nfs_pv}
+  name: ${nfs_sts}
   namespace: volume-nfs
   labels:
-    volume.io/nfs: ${nfs_pv}
-  annotations:
-    original-target-ns: ${nfs_ns}
-    original-target-pvc: ${nfs_pvc}
+    volume.io/nfs: ${nfs_sts}
 spec:
-  serviceName: ${nfs_pv}
+  serviceName: ${nfs_sts}
   replicas: 1
   selector:
     matchLabels:
-      volume.io/nfs: ${nfs_pv}
+      volume.io/nfs: ${nfs_sts}
   template:
     metadata:
       labels:
-        volume.io/nfs: ${nfs_pv}
-      annotations:
-        original-target-ns: ${nfs_ns}
-        original-target-pvc: ${nfs_pvc}
+        volume.io/nfs: ${nfs_sts}
     spec:
       restartPolicy: Always
-      priorityClassName: system-node-critical
+      # priorityClassName: system-node-critical
       hostNetwork: true
       hostPID: true
       dnsPolicy: ClusterFirstWithHostNet
@@ -52,24 +46,25 @@ spec:
           value: ${nfs_ns}
         - name: nfs_pvc
           value: ${nfs_pvc}
+        - name: data_pv
+          value: ${data_pv}
+        - name: export_dir
+          value: /var/lib/volume/nfs/${data_pv}
+        - name: export_opt
+          value: rw,insecure,no_root_squash,no_subtree_check,crossmnt
+        - name: export_ip
+          value: "0.0.0.0"
         # - name: export_ip
         #   valueFrom:
         #     fieldRef:
         #       fieldPath: status.podIP
-        - name: export_ip
-          value: "0.0.0.0"
-        - name: export_opt
-          value: rw,sync,insecure,no_root_squash,no_subtree_check,crossmnt
         command:
         - /bin/sh
         args:
         - -axc
         - |
           # get device
-          data_dev="$( df | awk '/ \/data$/ {print $1}' )"
-
-          # get export dir
-          export_dir="/var/lib/volume/nfs/${nfs_pvc}"
+          data_dev="$( df | grep "$export_dir" | awk '{print $1}' )"
 
           if [ "${export_ip}" = "0.0.0.0" ]; then
             export_mask="0.0.0.0"
@@ -78,10 +73,10 @@ spec:
           fi 
 
           # set env file
-          printenv > ${export_dir}.env
+          printenv | grep -E nfs_\|data_\|export_\|pod_ > ${export_dir}.env
 
           # start systemd to export
-          nfs_service="volume-nfs@${nfs_pvc}.service"
+          nfs_service="volume-nfs@${data_pv}.service"
           nsenter -t1 -m -- systemctl start "${nfs_service}"
           
           # check for success
@@ -104,7 +99,7 @@ spec:
           # main loop
           trap _exit_script SIGTERM SIGINT SIGKILL
           set +x
-          while :
+          while true
           do
             sleep 1
           done
@@ -117,39 +112,25 @@ spec:
           name: nfs
           mountPropagation: Bidirectional
         - name: data
-          mountPath: /var/lib/volume/nfs/${nfs_pvc}
+          mountPath: /var/lib/volume/nfs/${data_pv}
       volumes:
       - name: nfs
         hostPath:
-            path: /var/lib/volume/nfs
-  volumeClaimTemplates:
-  - metadata:
-      name: data
-      annotations:
-        original-target-ns: ${nfs_ns}
-        original-target-pvc: ${nfs_pvc} 
-    spec:
-      volumeMode: Filesystem
-      accessModes:
-      - ReadWriteMany
-      storageClassName: ${data_sc}
-      resources:
-        requests:
-          storage: ${size}
+          path: /var/lib/volume/nfs
+      - name: data
+        persistentVolumeClaim:
+          claimName: ${data_pvc}
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: ${nfs_pv}
+  name: ${nfs_sts}
   namespace: volume-nfs
   labels:
-    volume.io/nfs: ${nfs_pv}
-  annotations:
-    original-target-ns: ${nfs_ns}
-    original-target-pvc: ${nfs_pvc}
+    volume.io/nfs: ${nfs_sts}
 spec:
   selector:
-      volume.io/nfs: ${nfs_pv}
+      volume.io/nfs: ${nfs_sts}
   type: ClusterIP
   ports:
   - name: nfs

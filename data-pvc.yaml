@@ -1,11 +1,10 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: ${nfs_pvc}
-  namespace: ${nfs_ns}
+  name: ${data_pvc}
+  namespace: volume-nfs
 spec:
-  storageClassName: ""
-  volumeMode: Filesystem
+  storageClassName: ${data_sc}
   accessModes:
     - ReadWriteMany
   resources:
