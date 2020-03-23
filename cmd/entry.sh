@@ -11,7 +11,7 @@ printenv | grep -E nfs_\|data_\|export_\|pod_ | sort > "${export_dir}.env"
 cp -vuf /usr/bin/export.sh /var/lib/volume/nfs/
 
 # copy volume-nfs.service
-[ -n "$( cp -vuf /volume-nfs@.service /etc/systemd/system/ )" ] && \
+[ -n "$( cp -vuf /usr/bin/volume-nfs@.service /etc/systemd/system/ )" ] && \
 nsenter -t1 -m -- systemctl daemon-reload
 
 # start volume-nfs.service

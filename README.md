@@ -29,7 +29,13 @@ Assume you want create in `default` namespace a `10GiB` sized RWX PVC named `rwx
 ./create-rwx.sh rwx-pvc block-storage-sc rwx-pvc 10Gi
 ```
 
-After exection, basides the RWX PVC/PV, you will see a statefulset named after the PV is created in `volume-nfs` namespace. The statefulset mounts another RWO PVC/PV which is a block volume created with storageclass `block-storage-sc`.
+To delete 
+```
+./delete-rwx.sh rwx-pvc
+```
+
+## A closer look
+After creation, basides the RWX PVC/PV, you will see a statefulset named after the PV is created in `volume-nfs` namespace. The statefulset mounts another RWO PVC/PV which is a block volume created with storageclass `block-storage-sc`.
 
 RWX PVC:
 ```
@@ -59,6 +65,11 @@ NFS Statefulset:
 $ kubectl -n volume-nfs get sts -o wide
 NAME                                       READY   AGE    CONTAINERS   IMAGES
 pvc-8c61818e-0936-4833-b5dc-29cfa253d675   1/1     9m1s   exporter     alexzhc/nfs-exporter
+
+$ kubectl -n volume-nfs get po -o wide
+```
+NAME                                         READY   STATUS    RESTARTS   AGE    IP                NODE           NOMINATED NODE
+pvc-8c61818e-0936-4833-b5dc-29cfa253d675-0   1/1     Running   0          9m4s   192.168.176.161   k8s-worker-1
 ```
 
 NFS SVC:
@@ -69,7 +80,7 @@ Type:              ClusterIP
 IP:                10.96.3.111
 Port:              nfs  2049/TCP
 TargetPort:        2049/TCP
-Endpoints:         192.168.176.168:2049
+Endpoints:         192.168.176.161:2049
 ...
 ```
 
@@ -87,4 +98,20 @@ NAME                                       CAPACITY   ACCESS MODES   RECLAIM POL
 pvc-50123022-e0ec-4f58-9b7c-fce105d73e91   10Gi       RWX            Delete           Bound    volume-nfs/data-8c61818e-0936-4833-b5dc-29cfa253d675   block-storage-sc                 11m
 ```
 
+On node `k8s-worker-1`:
+```
+$ cat /etc/exports
+/var/lib/volume/nfs/pvc-50123022-e0ec-4f58-9b7c-fce105d73e91 192.168.176.161/16(rw,insecure,no_root_squash,no_subtree_check,crossmnt)
+
+$ df -hT /var/lib/volume/nfs/pvc-50123022-e0ec-4f58-9b7c-fce105d73e91
+Filesystem     Type  Size  Used Avail Use% Mounted on
+/dev/drbd1000  ext4  9.8G   37M  9.3G   1% /var/lib/volume/nfs/pvc-50123022-e0ec-4f58-9b7c-fce105d73e91
+```
+
+On any node with `kube-proxy`:
+```
+$ showmount -e 10.96.3.111
+Export list for 10.96.2.210:
+/var/lib/volume/nfs/pvc-50123022-e0ec-4f58-9b7c-fce105d73e91 192.168.176.161/16
+```
 
