@@ -5,6 +5,7 @@ basename="$2"
 echo "This export is originally for target PVC \"${nfs_pvc}\" in namespace \"${nfs_ns}\""
 
 _export_vol() {
+    mountpoint "$export_dir" && exit 1
     # export
     sed -i "/${basename}/d" /etc/exports
     if [ "$export_ip" = '*']; then 
