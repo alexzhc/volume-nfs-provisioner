@@ -19,7 +19,7 @@ parameters:
   backendStorageClass: block-storage-sc
 ```
 
-1. aggregate cli to `kubectl`, e.g.
+3. aggregate cli to `kubectl`, e.g.
 ```
 $ kubectl get persistentVolumeExport
 
