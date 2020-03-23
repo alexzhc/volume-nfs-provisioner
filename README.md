@@ -67,7 +67,6 @@ NAME                                       READY   AGE    CONTAINERS   IMAGES
 pvc-8c61818e-0936-4833-b5dc-29cfa253d675   1/1     9m1s   exporter     alexzhc/nfs-exporter
 
 $ kubectl -n volume-nfs get po -o wide
-```
 NAME                                         READY   STATUS    RESTARTS   AGE    IP                NODE           NOMINATED NODE
 pvc-8c61818e-0936-4833-b5dc-29cfa253d675-0   1/1     Running   0          9m4s   192.168.176.161   k8s-worker-1
 ```
