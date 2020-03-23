@@ -4,10 +4,10 @@ Dynamically provisioned NFS exports for Kubernetes block volumes
 ## Overview
 This project aims to provide "per-volume" nfs export for block volumes . It uses NFS kernel server for performance and K8S ClusterIP for HA.
 
-## Dev Phases
+## Roadmap
 1. static pvc creation by a script
 
-1. dynamic pvc creation by sig-external-storage provsioner
+1. dynamic pvc creation by kubernetes-incubator/external-storage
 
 ## Compatibility
 Any block storage system that has implemented k8s dynamic provisioning
