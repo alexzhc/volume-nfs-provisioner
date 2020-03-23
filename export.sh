@@ -12,11 +12,11 @@ _export_vol() {
     elif [ "$export_ip" = '0.0.0.0' ]; then
         export_ip_mask='0.0.0.0/0'
     else 
-        export_ip_mask="$( ip a | grep "inet $ip" | awk '{print $2}' )"
+        export_ip_mask="$( ip a | grep "inet $export_ip" | awk '{print $2}' )"
     fi 
     echo "${export_dir} ${export_ip_mask}(${export_opt})" >> /etc/exports    
     exportfs -vr
-    showmount -e "${export_ip}" | grep "${export_dir}" || exit 1
+    showmount -e "$export_ip" | grep "$export_dir" || exit 1
 }
 
 _unexport_vol() {

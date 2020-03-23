@@ -16,9 +16,7 @@ nfs_sts="$nfs_pv"
 data_pvc="data-${nfs_pvc_uid}"
 
 # delete objects
-kubectl delete deploy nginx
-
-sleep 5
+kubectl delete deploy nginx && sleep 3
 
 kubectl delete -n "$nfs_ns" pvc "$nfs_pvc"
 

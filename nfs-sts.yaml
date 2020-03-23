@@ -52,12 +52,12 @@ spec:
           value: /var/lib/volume/nfs/${data_pv}
         - name: export_opt
           value: rw,insecure,no_root_squash,no_subtree_check,crossmnt
-        - name: export_ip
-          value: "0.0.0.0"
         # - name: export_ip
-        #   valueFrom:
-        #     fieldRef:
-        #       fieldPath: status.podIP
+        #   value: "0.0.0.0"
+        - name: export_ip
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
         readinessProbe:
           tcpSocket:
             port: 2049
