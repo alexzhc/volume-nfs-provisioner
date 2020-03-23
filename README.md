@@ -7,7 +7,17 @@ This project aims to provide "per-volume" nfs export for block volumes . It uses
 ## Roadmap
 1. static pvc creation by a script
 
-1. dynamic pvc creation by kubernetes-incubator/external-storage
+1. dynamic pvc creation by "nested storageclass", e.g
+```
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: volume-nfs-sc
+provisioner: nfs.volume.io
+reclaimPolicy: Delete
+parameters:
+  backendStorageClass: block-storage-sc
+```
 
 ## Compatibility
 Any block storage system that has implemented k8s dynamic provisioning
