@@ -4,11 +4,23 @@
 data_dev="$( df | grep " ${export_dir}$" | awk '{print $1}' )"
 export data_dev
 
+# get export network 
+if [ "$export_ip" = '*']; then 
+    export_net='*'
+elif [ "$export_ip" = '0.0.0.0' ]; then
+    export_net='0.0.0.0/0'
+else 
+    ip_and_netmask="$( ip a | grep "inet $export_ip" | awk '{print $2}' )"
+    eval "$( ipcalc -np "$ip_and_netmask" )"
+    export_net="${NETWORK}/${PREFIX}"
+fi 
+export export_net
+
 # set env file
 printenv | grep -E nfs_\|data_\|export_\|pod_ | sort > "${export_dir}.env"
 
 # copy export.sh
-cp -vuf /usr/bin/export.sh /var/lib/volume/nfs/
+cp -vuf /usr/bin/export.sh "${export_root}"
 
 # copy volume-nfs.service
 [ -n "$( cp -vuf /usr/bin/volume-nfs@.service /etc/systemd/system/ )" ] && \

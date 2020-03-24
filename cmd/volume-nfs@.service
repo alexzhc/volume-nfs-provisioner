@@ -6,10 +6,10 @@ After=nfs-server.service
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-EnvironmentFile=/var/lib/volume/nfs/%i.env
-ExecStart=/var/lib/volume/nfs/export.sh -r %i
-ExecStop=/var/lib/volume/nfs/export.sh -u %i
-ExecStopPost=/var/lib/volume/nfs/export.sh -c %i
+EnvironmentFile=/var/lib/volume-nfs/%i.env
+ExecStart=/var/lib/volume-nfs/export.sh -r %i
+ExecStop=/var/lib/volume-nfs/export.sh -u %i
+ExecStopPost=/var/lib/volume-nfs/export.sh -c %i
 
 [Install]
 WantedBy=multi-user.target

@@ -38,6 +38,10 @@ spec:
             cpu: '200m'
             memory: '200Mi'
         env:
+        - name: pod_name
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
         - name: pod_uid
           valueFrom:
             fieldRef:
@@ -46,10 +50,14 @@ spec:
           value: ${nfs_ns}
         - name: nfs_pvc
           value: ${nfs_pvc}
+        - name: nfs_pv
+          value: ${nfs_pv}
+        - name: data_pvc
+          value: ${data_pvc}
         - name: data_pv
           value: ${data_pv}
         - name: export_dir
-          value: /var/lib/volume/nfs/${data_pv}
+          value: /var/lib/volume-nfs/${data_pv}
         - name: export_opt
           value: rw,insecure,no_root_squash,no_subtree_check,crossmnt
         # - name: export_ip
@@ -67,17 +75,17 @@ spec:
               exec:
                 command: [ "prestop.sh" ]
         volumeMounts:
-        - mountPath: /var/lib/volume/nfs
+        - mountPath: /var/lib/volume-nfs
           name: nfs
           mountPropagation: Bidirectional
         - name: data
-          mountPath: /var/lib/volume/nfs/${data_pv}
+          mountPath: /var/lib/volume-nfs/${data_pv}
         - name: systemd
           mountPath: /etc/systemd/system
       volumes:
       - name: nfs
         hostPath:
-          path: /var/lib/volume/nfs
+          path: /var/lib/volume-nfs
       - name: data
         persistentVolumeClaim:
           claimName: ${data_pvc}

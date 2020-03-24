@@ -19,4 +19,4 @@ spec:
   - timeo=80
   nfs:
     server: ${cluster_ip}
-    path: /var/lib/volume/nfs/${data_pv}
+    path: /var/lib/volume-nfs/${data_pv}
