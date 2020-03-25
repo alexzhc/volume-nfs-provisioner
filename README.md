@@ -34,7 +34,7 @@ parameters:
 Step 4. aggregate cli to `kubectl`, e.g.
 ```
 $ kubectl get persistentVolumeExport
-NAME                                      EXPORT                                      STORAGECLASS    VIP          NODE           CLAIM           
+NAME                                      EXPORT                                      STORAGECLASS    VIP          NODE           CLAIM
 pvc-8c61818e-0936-4833-b5dc-29cfa253d675  /pvc-50123022-e0ec-4f58-9b7c-fce105d73e91   volume-nfs-sc   10.96.2.218  k8s-worker-1   default/rwx-pvc
 ```
 ## Compatibility
