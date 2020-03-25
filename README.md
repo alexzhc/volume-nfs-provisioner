@@ -40,7 +40,7 @@ Data Plane:
                 +--------+
 ```
 
-Control Plane:
+Control Plane (dynamic provisioning):
 ```
                                               +--------+
                          +---------------+    | Block  |
@@ -51,7 +51,7 @@ Control Plane:
                     |                                                                  |
                     |                                                                  v
 +-----+    +--------+                                                               +--+--+
-| PVC +--->+ Access |                                                               | PVC |
+| PVC +--->+ Access |                                                               | PV |
 +-----+    |  Mode? |                                                               +--+--+
            +--------+                                                                  ^
                     |                                                                  |
