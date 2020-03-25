@@ -4,6 +4,37 @@ Dynamically provisioned NFS exports for Kubernetes block volumes
 ## Overview
 This project aims to provide "per-volume" nfs export for block volumes . It uses NFS kernel server for performance and K8S ClusterIP for HA.
 
+```
+            +--------+       +--------+       +--------+
+            | nginix |       | nginix |       | nginix |
+            |  pod1  |       |  pod2  |       |  pod3  |
+            +--------+       +---^----+       +---^----+
+                 ^               |                |
+                 |               |                |
+                 |          +----------+          |
+                 +----------+  NFS PVC +----------+
+                            +----^-----+
+                                 |
+                             +--------+
+                             | NFS PV |
+                             +---^----+
+                                 |
+                         +----------------+
+                         |  (cluster ip)  |
+                         |                |
+                         |  NFS POD/HOST  |
+                         +-------^--------+
+                                 |
+                            +----------+
+                            | DATA PVC |
+                            +----^-----+
+                                 |
+                             +--------+
+                             |DATA PV |
+                             +--------+
+
+```
+
 ## Roadmap
 Step 1. define workflow of a static pvc creation. [Done]
 
