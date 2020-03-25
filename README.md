@@ -3,7 +3,9 @@ Dynamically provisioned NFS exports for Kubernetes block volumes
 
 ## Overview
 This project aims to provide "per-volume" nfs export for block volumes .
+
 It uses NFS kernel server for performance and K8S ClusterIP for HA.
+
 NFS failover is handled by a Kubernetes Pod. 
 ```
             +--------+       +--------+       +--------+
