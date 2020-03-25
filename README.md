@@ -25,19 +25,19 @@ Data Plane:
                 | NFS PV |
                 +---^----+
                     |
-            +-------+--------+
-            |  (cluster ip)  |
-            |                |
-            |  NFS POD/HOST  |
-            +-------^--------+
+             +------+-------+
+             | (cluster ip) |
+             |              |
+             | NFS POD/HOST |
+             +------^-------+
                     |
                +----+-----+
                | DATA PVC |
                +----^-----+
                     |
-                +---+----+
-                |DATA PV |
-                +--------+
+               +----+----+
+               | DATA PV |
+               +---------+
 ```
 
 Control Plane (dynamic provisioning):
