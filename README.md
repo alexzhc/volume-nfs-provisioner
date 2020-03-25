@@ -34,8 +34,8 @@ parameters:
 Step 4. aggregate cli to `kubectl`, e.g.
 ```
 $ kubectl get persistentVolumeExport
-NAME                                       CAPACITY  STORAGECLASS    VIP          NODE           CLAIM
-pvc-105ccb72-c9a5-4b96-b7ac-3a0046d4b82e   10Gi      volume-nfs-sc   10.96.2.218  k8s-worker-1   default/rwx-pvc
+NAME                                      EXPORT                                      STORAGECLASS    VIP          NODE           CLAIM           
+pvc-8c61818e-0936-4833-b5dc-29cfa253d675  /pvc-50123022-e0ec-4f58-9b7c-fce105d73e91   volume-nfs-sc   10.96.2.218  k8s-worker-1   default/rwx-pvc
 ```
 ## Compatibility
 Any block storage system that has implemented k8s dynamic provisioning
