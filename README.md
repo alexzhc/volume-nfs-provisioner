@@ -50,9 +50,9 @@ Control Plane (dynamic provisioning):
                     |                                                                  |
                     |                                                                  |
                     |                                                                  v
-+-----+    +--------+                                                               +--+--+
-| PVC +--->+ Access |                                                               | PV |
-+-----+    |  Mode? |                                                               +--+--+
++-----+    +--------+                                                                +-+--+
+| PVC +--->+ Access |                                                                | PV |
++-----+    |  Mode? |                                                                +-+--+
            +--------+                                                                  ^
                     |                                                                  |
                     |                                                                  |
