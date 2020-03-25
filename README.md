@@ -7,6 +7,8 @@ This project aims to provide "per-volume" nfs export for block volumes .
 It uses NFS kernel server for performance and K8S ClusterIP for HA.
 
 NFS failover is handled by a Kubernetes Pod. 
+
+Data Plane:
 ```
 +-------+       +-------+        +-------+
 | nginx |       | nginx |        | nginx |
@@ -35,6 +37,29 @@ NFS failover is handled by a Kubernetes Pod.
                 +--------+
                 |DATA PV |
                 +--------+
+```
+
+Control Plane:
+```
+                                 +---------------+    +--------------+
+                                 |               |    |              |
+                            +--->+ ReadWriteOnce +--->+ Block Volume +--------------------------------------------+
+                            |    |               |    |              |                                            |
+                            |    +---------------+    +--------------+                                            |
+                            |                                                                                     v
+                            |                                                                                 +-------+
++-------+    +--------------+                                                                                 |       |
+|       |    |              |                                                                                 |  PVC  |
+|  PVC  +--->+ Access Mode? |                                                                                 |       |
+|       |    |              |                                                                                 +-------+
++-------+    +--------------+                                                                                     ^
+                            |                                                                                     |
+                            |                                                                                     |
+                            |    +---------------+    +--------------+    +------------+    +------------+        |
+                            |    |               |    |              |    |            |    |            |        |
+                            +--->+ ReadWriteMany +--->+ Block Volume +--->+ NFS Export +--->+ NFS Volume +--------+
+                                 |               |    |              |    |            |    |            |
+                                 +---------------+    +--------------+    +------------+    +------------+
 ```
 
 ## Roadmap
