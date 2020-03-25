@@ -42,7 +42,7 @@ spec:
       volumes:
       - name: www
         persistentVolumeClaim:
-          claimName: rwx-pvc
+          claimName: volume-nfs-pvc
 ---
 apiVersion: v1
 kind: Service

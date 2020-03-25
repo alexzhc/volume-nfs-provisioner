@@ -20,7 +20,7 @@ export export_net
 printenv | grep -E nfs_\|data_\|export_\|pod_ | sort > "${export_dir}.env"
 
 # copy export.sh
-cp -vuf /usr/bin/export.sh "${export_root}"
+cp -vuf /usr/bin/export.sh /var/lib/nfs/volume/
 
 # copy volume-nfs.service
 [ -n "$( cp -vuf /usr/bin/volume-nfs@.service /etc/systemd/system/ )" ] && \

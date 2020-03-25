@@ -1,0 +1,3 @@
+FROM alpine
+COPY volume-nfs-provisioner /
+CMD [ "/volume-nfs-provisioner" ]

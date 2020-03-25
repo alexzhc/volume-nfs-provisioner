@@ -5,9 +5,9 @@ Dynamically provisioned NFS exports for Kubernetes block volumes
 This project aims to provide "per-volume" nfs export for block volumes . It uses NFS kernel server for performance and K8S ClusterIP for HA.
 
 ## Roadmap
-1. static pvc creation by a script
+Step 1. define workflow of a static pvc creation. [Done]
 
-1. dynamic pvc creation by "nested storageclass", e.g.
+Step 2. dynamic pvc creation by "nested storageclass", e.g.
 ```
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
@@ -18,12 +18,25 @@ reclaimPolicy: Delete
 parameters:
   backendStorageClass: block-storage-sc
 ```
-
-3. aggregate cli to `kubectl`, e.g.
+Step 3. dynamic pvc creation by "nested provisioner", e.g
+```
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: volume-nfs-sc
+provisioner: nfs.volume.io
+reclaimPolicy: Delete
+parameters:
+  backendProvisioner: block.storage.io
+  backendParameter1:
+  backendParameter2:
+```
+Step 4. aggregate cli to `kubectl`, e.g.
 ```
 $ kubectl get persistentVolumeExport
-
-$ kubectl get pve
+PVC                                         PV                                       
+POD                                         VIP           NODE
+data-8c61818e-0936-4833-b5dc-29cfa253d675   pvc-50123022-e0ec-4f58-9b7c-fce105d73e91 pvc-8c61818e-0936-4833-b5dc-29cfa253d675    10.96.2.210   k8s-worker-1
 ```
 ## Compatibility
 Any block storage system that has implemented k8s dynamic provisioning
