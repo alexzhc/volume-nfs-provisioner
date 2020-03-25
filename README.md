@@ -34,8 +34,7 @@ parameters:
 Step 4. aggregate cli to `kubectl`, e.g.
 ```
 $ kubectl get persistentVolumeExport
-PVC                                         PV                                       
-POD                                         VIP           NODE
+PVC                                         PV                                       POD                                         VIP           NODE
 data-8c61818e-0936-4833-b5dc-29cfa253d675   pvc-50123022-e0ec-4f58-9b7c-fce105d73e91 pvc-8c61818e-0936-4833-b5dc-29cfa253d675    10.96.2.210   k8s-worker-1
 ```
 ## Compatibility
