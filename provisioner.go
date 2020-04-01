@@ -1,10 +1,10 @@
 package main
 
 import (
-	"errors"
+	// "errors"
 	"flag"
-	"os"
-	"path"
+	// "os"
+	// "path"
 	"syscall"
 	
 	"sigs.k8s.io/sig-storage-lib-external-provisioner/controller"
@@ -22,24 +22,11 @@ const (
 )
 
 type volumeNfsProvisioner struct {
-	// The directory to create PV-backing directories in
-	pvDir string
-
-	// Identity of this volumeNfsProvisioner, set to node's name. Used to identify
-	// "this" provisioner's PVs.
-	identity string
 }
 
-// NewNfsVolumeProvisioner creates a new hostpath provisioner
-func NewNfsVolumeProvisioner() controller.Provisioner {
-	nodeName := os.Getenv("NODE_NAME")
-	if nodeName == "" {
-		klog.Fatal("env variable NODE_NAME must be set so that this provisioner can identify itself")
-	}
-	return &volumeNfsProvisioner{
-		pvDir:    "/tmp/hostpath-provisioner",
-		identity: nodeName,
-	}
+// NewHostPathProvisioner creates a new hostpath provisioner
+func NewHostPathProvisioner() controller.Provisioner {
+	return &volumeNfsProvisioner{}
 }
 
 var _ controller.Provisioner = &volumeNfsProvisioner{}
@@ -49,9 +36,6 @@ func (p *volumeNfsProvisioner) Provision(options controller.ProvisionOptions) (*
 	pv := &v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: options.PVName,
-			Annotations: map[string]string{
-				"hostPathProvisionerIdentity": p.identity,
-			},
 		},
 		Spec: v1.PersistentVolumeSpec{
 			PersistentVolumeReclaimPolicy: *options.StorageClass.ReclaimPolicy,
@@ -75,19 +59,6 @@ func (p *volumeNfsProvisioner) Provision(options controller.ProvisionOptions) (*
 // Delete removes the storage asset that was created by Provision represented
 // by the given PV.
 func (p *volumeNfsProvisioner) Delete(volume *v1.PersistentVolume) error {
-	ann, ok := volume.Annotations["hostPathProvisionerIdentity"]
-	if !ok {
-		return errors.New("identity annotation not found on PV")
-	}
-	if ann != p.identity {
-		return &controller.IgnoredError{Reason: "identity annotation on PV does not match ours"}
-	}
-
-	path := path.Join(p.pvDir, volume.Name)
-	if err := os.RemoveAll(path); err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -117,7 +88,7 @@ func main() {
 
 	// Create the provisioner: it implements the Provisioner interface expected by
 	// the controller
-	volumeNfsProvisioner := NewNfsVolumeProvisioner()
+	volumeNfsProvisioner := NewHostPathProvisioner()
 
 	// Start the provision controller which will dynamically provision hostPath
 	// PVs
