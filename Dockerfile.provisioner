@@ -1,3 +1,5 @@
 FROM alpine
-COPY volume-nfs-provisioner /
-CMD [ "/volume-nfs-provisioner" ]
+
+COPY volume-nfs-provisioner /usr/bin/
+
+CMD [ "volume-nfs-provisioner" ]

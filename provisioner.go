@@ -21,31 +21,31 @@ const (
 	provisionerName = "nfs.volume.io"
 )
 
-type hostPathProvisioner struct {
+type volumeNfsProvisioner struct {
 	// The directory to create PV-backing directories in
 	pvDir string
 
-	// Identity of this hostPathProvisioner, set to node's name. Used to identify
+	// Identity of this volumeNfsProvisioner, set to node's name. Used to identify
 	// "this" provisioner's PVs.
 	identity string
 }
 
-// NewHostPathProvisioner creates a new hostpath provisioner
-func NewHostPathProvisioner() controller.Provisioner {
+// NewNfsVolumeProvisioner creates a new hostpath provisioner
+func NewNfsVolumeProvisioner() controller.Provisioner {
 	nodeName := os.Getenv("NODE_NAME")
 	if nodeName == "" {
 		klog.Fatal("env variable NODE_NAME must be set so that this provisioner can identify itself")
 	}
-	return &hostPathProvisioner{
+	return &volumeNfsProvisioner{
 		pvDir:    "/tmp/hostpath-provisioner",
 		identity: nodeName,
 	}
 }
 
-var _ controller.Provisioner = &hostPathProvisioner{}
+var _ controller.Provisioner = &volumeNfsProvisioner{}
 
 // Provision creates a storage asset and returns a PV object representing it.
-func (p *hostPathProvisioner) Provision(options controller.ProvisionOptions) (*v1.PersistentVolume, error) {
+func (p *volumeNfsProvisioner) Provision(options controller.ProvisionOptions) (*v1.PersistentVolume, error) {
 	pv := &v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: options.PVName,
@@ -74,7 +74,7 @@ func (p *hostPathProvisioner) Provision(options controller.ProvisionOptions) (*v
 
 // Delete removes the storage asset that was created by Provision represented
 // by the given PV.
-func (p *hostPathProvisioner) Delete(volume *v1.PersistentVolume) error {
+func (p *volumeNfsProvisioner) Delete(volume *v1.PersistentVolume) error {
 	ann, ok := volume.Annotations["hostPathProvisionerIdentity"]
 	if !ok {
 		return errors.New("identity annotation not found on PV")
@@ -117,10 +117,10 @@ func main() {
 
 	// Create the provisioner: it implements the Provisioner interface expected by
 	// the controller
-	hostPathProvisioner := NewHostPathProvisioner()
+	volumeNfsProvisioner := NewNfsVolumeProvisioner()
 
 	// Start the provision controller which will dynamically provision hostPath
 	// PVs
-	pc := controller.NewProvisionController(clientset, provisionerName, hostPathProvisioner, serverVersion.GitVersion)
+	pc := controller.NewProvisionController(clientset, provisionerName, volumeNfsProvisioner, serverVersion.GitVersion)
 	pc.Run(wait.NeverStop)
 }
