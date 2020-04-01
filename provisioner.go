@@ -17,15 +17,11 @@ import (
 	"k8s.io/klog"
 )
 
-const (
-	provisionerName = "nfs.volume.io"
-)
-
 type volumeNfsProvisioner struct {
 }
 
-// NewHostPathProvisioner creates a new hostpath provisioner
-func NewHostPathProvisioner() controller.Provisioner {
+// NewVolumeNfsProvisioner creates a new hostpath provisioner
+func NewVolumeNfsProvisioner() controller.Provisioner {
 	return &volumeNfsProvisioner{}
 }
 
@@ -45,8 +41,8 @@ func (p *volumeNfsProvisioner) Provision(options controller.ProvisionOptions) (*
 			},
 			PersistentVolumeSource: v1.PersistentVolumeSource{
 				NFS: &v1.NFSVolumeSource{
-					Server:   "10.96.2.218",
-					Path:     "/var/lib/nfs/volume/pvc-a72c00cb-f6a0-4666-9d41-acd326835992",
+					Server:   "127.0.0.1",
+					Path:     "/var/lib/nfs/volume/" + options.PVName,
 					ReadOnly: false,
 				},
 			},
@@ -64,6 +60,9 @@ func (p *volumeNfsProvisioner) Delete(volume *v1.PersistentVolume) error {
 
 func main() {
 	syscall.Umask(0)
+
+	// Provisoner name
+	provisionerName := flag.String("name", "nfs.volume.io", "a string")
 
 	flag.Parse()
 	flag.Set("logtostderr", "true")
@@ -88,10 +87,10 @@ func main() {
 
 	// Create the provisioner: it implements the Provisioner interface expected by
 	// the controller
-	volumeNfsProvisioner := NewHostPathProvisioner()
+	volumeNfsProvisioner := NewVolumeNfsProvisioner()
 
 	// Start the provision controller which will dynamically provision hostPath
 	// PVs
-	pc := controller.NewProvisionController(clientset, provisionerName, volumeNfsProvisioner, serverVersion.GitVersion)
+	pc := controller.NewProvisionController(clientset, *provisionerName, volumeNfsProvisioner, serverVersion.GitVersion)
 	pc.Run(wait.NeverStop)
 }

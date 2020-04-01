@@ -1,5 +1,20 @@
-FROM alpine
+FROM golang:alpine as builder
 
-COPY volume-nfs-provisioner /usr/bin/
+WORKDIR /root
 
-CMD [ "volume-nfs-provisioner" ]
+ADD go.* /root/
+
+RUN set -x && \
+    go mod download -x
+
+ADD provisioner.go /root/
+    
+RUN set -x && \
+    CGO_ENABLED=0 go build -v -ldflags '-extldflags "-static"' -o volume-nfs-provisioner . && \
+    chmod +x volume-nfs-provisioner
+
+FROM busybox
+
+COPY --from=builder /root/volume-nfs-provisioner /usr/bin/
+
+ENTRYPOINT [ "volume-nfs-provisioner" ]

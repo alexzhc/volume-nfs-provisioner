@@ -22,14 +22,15 @@ spec:
         image: daocloud.io/piraeus/volume-nfs-provisioner
         imagePullPolicy: Always
         env:
-          - name: NODE_NAME
-            valueFrom:
-              fieldRef:
-                fieldPath: spec.nodeName
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
         resources:
           limits:
             cpu: '200m'
             memory: '200Mi'
+        args: [ -name=nfs.volume.io ]
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
