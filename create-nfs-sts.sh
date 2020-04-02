@@ -7,7 +7,6 @@ data_pv="$3"
 nfs_pvc="$4"
 nfs_pv="$5"
 nfs_ns="$6"
-# nfs_ns=default
 
 exec 3>&1 1>&2
 

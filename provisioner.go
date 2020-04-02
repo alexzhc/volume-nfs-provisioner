@@ -67,11 +67,11 @@ func (p *volumeNfsProvisioner) Provision(options controller.ProvisionOptions) (*
 	nfsPvc := options.PVC.Name
 	dataPv := "pvc-" + BytesToString(dataPvcUid)
 
-	out, err := exec.Command( "create-nfs-sts.sh", nfsSts, dataPvc, dataPv, nfsPvc, nfsPv, nfsNs ).Output()
+	pod, err := exec.Command( "create-nfs-sts.sh", nfsSts, dataPvc, dataPv, nfsPvc, nfsPv, nfsNs ).Output()
 	if err != nil {
 		klog.Info(err)
 	}
-	klog.Infof("Created NFS Pod: %s", out )
+	klog.Infof("Created NFS Pod: %s", pod )
 	
 	pv := &v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
@@ -98,6 +98,20 @@ func (p *volumeNfsProvisioner) Provision(options controller.ProvisionOptions) (*
 // Delete removes the storage asset that was created by Provision represented
 // by the given PV.
 func (p *volumeNfsProvisioner) Delete(volume *v1.PersistentVolume) error {
+	nfsPv := volume.ObjectMeta.Name
+	klog.Infof("PV is %s", nfsPv )
+
+	nfsSts := nfsPv
+	nfsSvc	:= nfsSts
+	dataPvc := "data-" + nfsPv + "-0"
+
+	cmd1 := exec.Command( "kubectl", "-n", "volume-nfs", "delete", "sts", nfsSts )
+	cmd1.Run()
+	cmd2 := exec.Command( "kubectl", "-n", "volume-nfs", "delete", "svc", nfsSvc )
+	cmd2.Run()
+	cmd3 := exec.Command( "kubectl", "-n", "volume-nfs", "delete", "pvc", dataPvc )
+	cmd3.Run()
+
 	return nil
 }
 
