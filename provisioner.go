@@ -3,7 +3,8 @@ package main
 import (
 	// "errors"
 	"flag"
-	// "os"
+	"os/exec"
+	"strconv"
 	// "path"
 	"syscall"
 	
@@ -17,10 +18,14 @@ import (
 	"k8s.io/klog"
 )
 
+func BytesToString(data []byte) string {
+	return string(data[:])
+}
+
 type volumeNfsProvisioner struct {
 }
 
-// NewVolumeNfsProvisioner creates a new hostpath provisioner
+// NewVolumeNfsProvisioner creates a new provisioner
 func NewVolumeNfsProvisioner() controller.Provisioner {
 	return &volumeNfsProvisioner{}
 }
@@ -29,6 +34,45 @@ var _ controller.Provisioner = &volumeNfsProvisioner{}
 
 // Provision creates a storage asset and returns a PV object representing it.
 func (p *volumeNfsProvisioner) Provision(options controller.ProvisionOptions) (*v1.PersistentVolume, error) {
+
+	nfsPv	:= options.PVName
+	nfsSts	:= nfsPv
+	nfsSvc	:= nfsSts
+
+	// create NFS SVC
+	nfsIp, err := exec.Command( "create-nfs-svc.sh", nfsSvc ).Output()
+	if err != nil {
+		klog.Info(err)
+	}
+	klog.Infof("NFS IP is %s", nfsIp )
+
+	// create Data PVC
+	capacity := options.PVC.Spec.Resources.Requests[v1.ResourceName(v1.ResourceStorage)]
+	size := strconv.FormatInt( capacity.Value(), 10 )
+	klog.Infof( "Data PVC size is %s", size )
+
+	dataSc := options.StorageClass.Parameters[ "dataStorageClass" ]
+	klog.Infof( "Data SC is %s", dataSc )
+
+	dataPvc := "data-" + nfsPv + "-0"
+	
+	dataPvcUid, err := exec.Command( "create-data-pvc.sh", dataPvc, dataSc, size ).Output()
+	if err != nil {
+		klog.Info(err)
+	}
+	klog.Infof("Data PVC uid is %s", dataPvcUid )
+
+	// create NFS StatefulSet
+	nfsNs := options.PVC.Namespace
+	nfsPvc := options.PVC.Name
+	dataPv := "pvc-" + BytesToString(dataPvcUid)
+
+	out, err := exec.Command( "create-nfs-sts.sh", nfsSts, dataPvc, dataPv, nfsPvc, nfsPv, nfsNs ).Output()
+	if err != nil {
+		klog.Info(err)
+	}
+	klog.Infof("Created NFS Pod: %s", out )
+	
 	pv := &v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: options.PVName,
@@ -41,14 +85,13 @@ func (p *volumeNfsProvisioner) Provision(options controller.ProvisionOptions) (*
 			},
 			PersistentVolumeSource: v1.PersistentVolumeSource{
 				NFS: &v1.NFSVolumeSource{
-					Server:   "127.0.0.1",
-					Path:     "/var/lib/nfs/volume/" + options.PVName,
+					Server:   BytesToString(nfsIp),
+					Path:     "/var/lib/nfs/volume/pvc-" + BytesToString(dataPvcUid),
 					ReadOnly: false,
 				},
 			},
 		},
 	}
-
 	return pv, nil
 }
 
@@ -89,7 +132,7 @@ func main() {
 	// the controller
 	volumeNfsProvisioner := NewVolumeNfsProvisioner()
 
-	// Start the provision controller which will dynamically provision hostPath
+	// Start the provision controller
 	// PVs
 	pc := controller.NewProvisionController(clientset, *provisionerName, volumeNfsProvisioner, serverVersion.GitVersion)
 	pc.Run(wait.NeverStop)

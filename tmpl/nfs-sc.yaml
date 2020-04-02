@@ -1,0 +1,8 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: volume-nfs-sc
+provisioner: nfs.volume.io
+reclaimPolicy: Delete
+parameters:
+  dataStorageClass: piraeus-local-dflt-r3
