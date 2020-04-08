@@ -5,4 +5,4 @@ metadata:
 provisioner: nfs.volume.io
 reclaimPolicy: Delete
 parameters:
-  dataStorageClass: piraeus-local-dflt-r3
+  dataBackendStorageClass: piraeus-local-dflt-r3

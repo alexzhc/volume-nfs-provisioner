@@ -33,7 +33,7 @@ SECONDS=0
 cluster_ip=
 while [ -z "$cluster_ip" ] ; do
     cluster_ip="$( kubectl -n volume-nfs get svc "$nfs_sts" -o jsonpath='{.spec.clusterIP}' )"
-    sleep 1
+    sleep 2
     [ "$SECONDS" -ge 30 ] && echo 'Cannot get cluster ip, failed to create nfs pvc' && exit 1
 done 
 
@@ -45,7 +45,7 @@ SECONDS=0
 endpoints=
 while [ -z "$endpoints" ] ; do
     endpoints="$( kubectl -n volume-nfs get ep "$nfs_sts" -o jsonpath='{.subsets[0].addresses[0].ip}' )"
-    sleep 1
+    sleep 2
     [ "$SECONDS" -ge 300 ] && echo 'Cannot get endpoints, please check volume-nfs pod' && exit 1
 done 
 
