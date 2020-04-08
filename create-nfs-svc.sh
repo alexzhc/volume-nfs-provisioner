@@ -10,7 +10,7 @@ SECONDS=0
 cluster_ip=
 while [ -z "$cluster_ip" ] ; do
     cluster_ip="$( kubectl -n volume-nfs get svc "$nfs_sts" -o jsonpath='{.spec.clusterIP}' )"
-    sleep 3
+    sleep 2
     [ "$SECONDS" -ge 30 ] && echo 'Cannot get cluster ip, failed to create nfs svc' && exit 1
 done
 

@@ -29,8 +29,8 @@ spec:
       terminationGracePeriodSeconds: 0
       containers:
       - name: exporter
-        image: alexzhc/nfs-exporter
-        imagePullPolicy: IfNotPresent
+        image: daocloud.io/piraeus/volume-nfs-exporter
+        imagePullPolicy: Always
         securityContext:
           privileged: true
         resources:

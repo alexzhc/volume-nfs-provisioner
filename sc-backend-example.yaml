@@ -1,0 +1,17 @@
+# this is an example, using piraeus block storage
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: block-storage-sc
+provisioner: linstor.csi.linbit.com
+allowVolumeExpansion: true
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+parameters:
+  layerlist: drbd storage
+  placementCount: "3"
+  placementPolicy: FollowTopology
+  allowRemoteVolumeAccess: "false"
+  disklessOnRemaining: "false"
+  mountOpts: noatime,discard
+  storagePool: DfltStorPool

@@ -46,15 +46,15 @@ func (p *volumeNfsProvisioner) Provision(options controller.ProvisionOptions) (*
 	if err != nil {
 		klog.Info(err)
 	}
-	klog.Infof("NFS IP is %s", nfsIp )
+	klog.Infof("NFS export IP is \"%s\"", nfsIp )
 
 	// create Data PVC
 	capacity := options.PVC.Spec.Resources.Requests[v1.ResourceName(v1.ResourceStorage)]
 	size := strconv.FormatInt( capacity.Value(), 10 )
-	klog.Infof( "Data PVC size is %s", size )
+	klog.Infof( "Data backend PVC size is \"%s\"", size )
 
 	dataScName := options.StorageClass.Parameters[ "dataBackendStorageClass" ]
-	klog.Infof( "Data SC is %s", dataScName )
+	klog.Infof( "Data backend SC is \"%s\"", dataScName )
 
 	dataPvcName := strings.Replace(nfsPvName, "pvc-", "data-", 1) + "-0"
 	
@@ -62,7 +62,7 @@ func (p *volumeNfsProvisioner) Provision(options controller.ProvisionOptions) (*
 	if err != nil {
 		klog.Info(err)
 	}
-	klog.Infof("Data PVC uid is %s", dataPvcUid )
+	klog.Infof("Data backend PVC uid is \"%s\"", dataPvcUid )
 
 	// create NFS StatefulSet to bridge NFS SVC with Data PVC
 	nfsNs := options.PVC.Namespace
@@ -115,12 +115,23 @@ func (p *volumeNfsProvisioner) Delete(volume *v1.PersistentVolume) error {
 	nfsSvcName	:= nfsStsName
 	dataPvcName := strings.Replace(nfsPvName, "pvc-", "data-", 1) + "-0"
 
-	cmd1 := exec.Command( "kubectl", "-n", "volume-nfs", "delete", "sts", nfsStsName )
-	cmd1.Run()
-	cmd2 := exec.Command( "kubectl", "-n", "volume-nfs", "delete", "svc", nfsSvcName )
-	cmd2.Run()
-	cmd3 := exec.Command( "kubectl", "-n", "volume-nfs", "delete", "pvc", dataPvcName )
-	cmd3.Run()
+	stdoutStderr, err := exec.Command( "kubectl", "-n", "volume-nfs", "delete", "sts", nfsStsName ).CombinedOutput()
+	if err != nil {
+		klog.Info(err)
+	}
+	klog.Infof("%s", stdoutStderr)
+
+	stdoutStderr, err = exec.Command( "kubectl", "-n", "volume-nfs", "delete", "svc", nfsSvcName ).CombinedOutput()
+	if err != nil {
+		klog.Info(err)
+	}
+	klog.Infof("%s", stdoutStderr)
+
+	stdoutStderr, err = exec.Command( "kubectl", "-n", "volume-nfs", "delete", "pvc", dataPvcName ).CombinedOutput()
+	if err != nil {
+		klog.Info(err)
+	}
+	klog.Infof("%s", stdoutStderr)
 
 	return nil
 }
