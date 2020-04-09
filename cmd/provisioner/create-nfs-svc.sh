@@ -1,4 +1,4 @@
-#!/bin/sh -ax
+#!/bin/sh -a
 
 exec 3>&1 1>&2
 

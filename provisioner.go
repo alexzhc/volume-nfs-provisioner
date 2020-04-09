@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"bufio"
+	"bytes"
 	// "path"
 	"syscall"
 	
@@ -32,46 +33,13 @@ func NewVolumeNfsProvisioner() controller.Provisioner {
 	return &volumeNfsProvisioner{}
 }
 
-var _ controller.Provisioner = &volumeNfsProvisioner{}
-
-// Provision creates a storage asset and returns a PV object representing it.
-func (p *volumeNfsProvisioner) Provision(options controller.ProvisionOptions) (*v1.PersistentVolume, error) {
-
-	nfsPvName	:= options.PVName
-	nfsStsName	:= nfsPvName
-	nfsSvcName	:= nfsStsName
-
-	// create NFS SVC
-	nfsIp, err := exec.Command( "create-nfs-svc.sh", nfsSvcName ).Output()
-	if err != nil {
-		klog.Info(err)
-	}
-	klog.Infof("NFS export IP is \"%s\"", nfsIp )
-
-	// create Data PVC
-	capacity := options.PVC.Spec.Resources.Requests[v1.ResourceName(v1.ResourceStorage)]
-	size := strconv.FormatInt( capacity.Value(), 10 )
-	klog.Infof( "Data backend PVC size is \"%s\"", size )
-
-	dataScName := options.StorageClass.Parameters[ "dataBackendStorageClass" ]
-	klog.Infof( "Data backend SC is \"%s\"", dataScName )
-
-	dataPvcName := strings.Replace(nfsPvName, "pvc-", "data-", 1) + "-0"
-	
-	dataPvcUid, err := exec.Command( "create-data-pvc.sh", dataPvcName, dataScName, size ).Output()
-	if err != nil {
-		klog.Info(err)
-	}
-	klog.Infof("Data backend PVC uid is \"%s\"", dataPvcUid )
-
-	// create NFS StatefulSet to bridge NFS SVC with Data PVC
-	nfsNs := options.PVC.Namespace
-	nfsPvcName := options.PVC.Name
-	dataPvName := "pvc-" + BytesToString(dataPvcUid)
-
-	klog.Infof("Creating NFS export pod by statefulset \"%s\":", nfsStsName )
-	cmd := exec.Command( "create-nfs-sts.sh", nfsNs, nfsStsName, nfsPvcName, nfsPvName, dataPvcName, dataPvName )
+func RunExtCmd(name string, args ...string ) string {
+	cmd := exec.Command(name, args...)
 	stderr, err :=cmd.StderrPipe()
+	if err != nil {
+		klog.Info(err)
+	}
+	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		klog.Info(err)
 	}
@@ -82,6 +50,49 @@ func (p *volumeNfsProvisioner) Provision(options controller.ProvisionOptions) (*
 	for sc.Scan() {
 		klog.Info(sc.Text())
 	}
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(stdout)
+	output := buf.String()
+	return output
+}
+
+var _ controller.Provisioner = &volumeNfsProvisioner{}
+
+// Provision creates a storage asset and returns a PV object representing it.
+func (p *volumeNfsProvisioner) Provision(options controller.ProvisionOptions) (*v1.PersistentVolume, error) {
+
+	nfsPvcNs := options.PVC.Namespace
+	nfsPvcName := options.PVC.Name
+	nfsPvName	:= options.PVName
+	nfsStsName	:= nfsPvName
+	nfsSvcName	:= nfsStsName
+
+	dataScName := options.StorageClass.Parameters[ "dataBackendStorageClass" ]
+	klog.Infof( "Data backend SC is \"%s\"", dataScName )
+
+	dataPvcName := strings.Replace(nfsPvName, "pvc-", "data-", 1) + "-0"
+
+	// create Data PVC
+	capacity := options.PVC.Spec.Resources.Requests[v1.ResourceName(v1.ResourceStorage)]
+	size := strconv.FormatInt( capacity.Value(), 10 )
+	klog.Infof( "Data backend PVC size is \"%s\"", size )
+
+	dataPvcUid := RunExtCmd( "create-data-pvc.sh", dataPvcName, dataScName, size )
+	klog.Infof("Data backend PVC uid is \"%s\"", dataPvcUid )
+
+	dataPvName := "pvc-" + dataPvcUid
+
+	// create NFS SVC
+	nfsIp := RunExtCmd( "create-nfs-svc.sh", nfsSvcName )
+	klog.Infof("NFS export IP is \"%s\"", nfsIp )
+
+	// create NFS StatefulSet to bridge NFS SVC with Data PVC
+	klog.Infof("Creating NFS export pod by statefulset: \"%s\"", nfsStsName )
+	RunExtCmd( "create-nfs-sts.sh", nfsPvcNs, nfsStsName, nfsPvcName, nfsPvName, dataPvcName, dataPvName )
+
+	// if options.PVC.Spec.AccessModes[0] == "ReadWriteOnce" {
+	// 	RunExtCmd( "rebound-data-pv.sh", nfsPvcNs, nfsPvcName, nfsStsName, dataPvcName, dataPvName )
+	// } 
 
 	pv := &v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
@@ -95,8 +106,8 @@ func (p *volumeNfsProvisioner) Provision(options controller.ProvisionOptions) (*
 			},
 			PersistentVolumeSource: v1.PersistentVolumeSource{
 				NFS: &v1.NFSVolumeSource{
-					Server:   BytesToString(nfsIp),
-					Path:     "/var/lib/nfs/volume/pvc-" + BytesToString(dataPvcUid),
+					Server:   nfsIp,
+					Path:     "/var/lib/nfs/volume/" + dataPvName,
 					ReadOnly: false,
 				},
 			},
@@ -109,30 +120,7 @@ func (p *volumeNfsProvisioner) Provision(options controller.ProvisionOptions) (*
 // by the given PV.
 func (p *volumeNfsProvisioner) Delete(volume *v1.PersistentVolume) error {
 	nfsPvName := volume.ObjectMeta.Name
-	klog.Infof("PV is %s", nfsPvName )
-
-	nfsStsName := nfsPvName
-	nfsSvcName	:= nfsStsName
-	dataPvcName := strings.Replace(nfsPvName, "pvc-", "data-", 1) + "-0"
-
-	stdoutStderr, err := exec.Command( "kubectl", "-n", "volume-nfs", "delete", "sts", nfsStsName ).CombinedOutput()
-	if err != nil {
-		klog.Info(err)
-	}
-	klog.Infof("%s", stdoutStderr)
-
-	stdoutStderr, err = exec.Command( "kubectl", "-n", "volume-nfs", "delete", "svc", nfsSvcName ).CombinedOutput()
-	if err != nil {
-		klog.Info(err)
-	}
-	klog.Infof("%s", stdoutStderr)
-
-	stdoutStderr, err = exec.Command( "kubectl", "-n", "volume-nfs", "delete", "pvc", dataPvcName ).CombinedOutput()
-	if err != nil {
-		klog.Info(err)
-	}
-	klog.Infof("%s", stdoutStderr)
-
+	RunExtCmd( "delete-data-pvc.sh", nfsPvName )
 	return nil
 }
 

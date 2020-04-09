@@ -1,4 +1,5 @@
 #!/bin/sh -a
+exec 1>&2
 
 nfs_ns="$1"
 nfs_sts="$2"
@@ -6,8 +7,6 @@ nfs_pvc="$3"
 nfs_pv="$4"
 data_pvc="$5"
 data_pv="$6"
-
-exec 1>&2
 
 envsubst < tmpl/nfs-sts.yaml | kubectl apply -f -
 
@@ -19,5 +18,7 @@ while [ -z "$endpoint_ip" ] ; do
     sleep 1
     kubectl -n volume-nfs get pod "${nfs_sts}-0" | grep -vw ^NAME | awk '{print "NFS pod status: "$3}'
     sleep 1
-    [ "$SECONDS" -ge 60 ] && echo 'Cannot get endpoints, please check volume-nfs pod' && exit 0
+    [ "$SECONDS" -ge 60 ] && echo 'Cannot get endpoints, please check volume-nfs pod' && break
 done
+
+exit 0

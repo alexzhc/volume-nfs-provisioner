@@ -28,6 +28,6 @@ COPY --from=builder /root/volume-nfs-provisioner /usr/bin/
 
 ADD tmpl /tmpl
 
-ADD *.sh /usr/local/bin/
+ADD cmd/provisioner/ /usr/local/bin/
 
 ENTRYPOINT [ "volume-nfs-provisioner" ]
